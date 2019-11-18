@@ -1,8 +1,8 @@
-<p align="center"><img src="logo.png"></p>
-
 ## What is this?
 
 fSpy is an open source, cross platform app for still image camera matching. See [fspy.io](https://fspy.io) for more info. The source code is available under the GPL license.
+
+![fSpy screenshot](screenshot.jpg)
 
 ## Backstory
 
@@ -16,6 +16,8 @@ Interested in writing an importer for your favorite application? Then the [fSpy 
 
 
 ## Building and running
+
+The following instructions are for developers. If you just want to run the app, [download the latest executable for your platform](https://github.com/stuffmatic/fSpy/releases).
 
 fSpy is written in [Typescript](https://www.typescriptlang.org) using [Electron](https://electronjs.org), [React](https://reactjs.org) and [Redux](https://redux.js.org). [Visual Studio Code](https://code.visualstudio.com) is recommended for a pleasant editing experience.
 
