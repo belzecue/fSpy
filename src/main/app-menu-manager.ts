@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ export interface AppMenuCallbacks {
   onQuit(): void
   onExportJSON(): void
   onExportProjectImage(): void
+  onEnterFullScreenMode(): void
+  onExitFullScreenMode(): void
 }
 
 export default class AppMenuManager {
@@ -129,13 +131,13 @@ export default class AppMenuManager {
       fileMenuItems.push({ type: 'separator' })
       fileMenuItems.push(quitMenuItem)
     } else {
-      let recentDocumentsSubmenu = {
+      let recentDocumentsSubmenu: Electron.MenuItemConstructorOptions = {
         label: 'Open Recent',
-        role: 'recentdocuments',
+        role: 'recentDocuments',
         submenu: [
           {
             label: 'Clear Recent',
-            role: 'clearrecentdocuments'
+            role: 'clearRecentDocuments'
           }
         ]
       }
@@ -148,18 +150,32 @@ export default class AppMenuManager {
     }
 
     let menus = [fileMenu]
-    if (process.env.DEV) {
-      let devMenu = {
-        label: 'Dev',
-        submenu: [
-        ]
-      }
-      menus.push(devMenu)
+    let viewMenu = {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Enter full screen mode',
+          id: 'enter-full-screen',
+          accelerator: 'Command+F',
+          click: () => {
+            this.callbacks.onEnterFullScreenMode()
+          }
+        },
+        {
+          label: 'Exit full screen mode',
+          id: 'exit-full-screen',
+          accelerator: 'Escape',
+          click: () => {
+            this.callbacks.onExitFullScreenMode()
+          }
+        }
+      ]
     }
+    menus.push(viewMenu)
 
     if (process.platform === 'darwin') {
       menus.unshift({
-        label: app.getName(),
+        label: app.name,
         submenu: [
           quitMenuItem
         ]
@@ -179,5 +195,13 @@ export default class AppMenuManager {
 
   setSaveAsItemEnabled(enabled: boolean) {
     this.menu.getMenuItemById('save-as').enabled = enabled
+  }
+
+  setEnterFullScreenItemEnabled(enabled: boolean) {
+    this.menu.getMenuItemById('enter-full-screen').enabled = enabled
+  }
+
+  setExitFullScreenItemEnabled(enabled: boolean) {
+    this.menu.getMenuItemById('exit-full-screen').enabled = enabled
   }
 }

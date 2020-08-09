@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,6 +57,11 @@ export function uiState(state: UIState | undefined, action: AppAction): UIState 
         ...state,
         projectHasUnsavedChanges: false,
         projectFilePath: null
+      }
+    case ActionTypes.SET_SIDE_PANEL_VISIBILITY:
+      return {
+        ...state,
+        sidePanelsAreVisible: action.panelsAreVisible
       }
     case ActionTypes.LOAD_STATE:
       ipcRenderer.send(

@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,20 +22,21 @@ import ResultContainer from './containers/result-container'
 import SettingsContainer from './containers/settings-container'
 
 import { StoreState } from './types/store-state'
-import { Dispatch, connect } from 'react-redux'
-import { AppAction, setImage, loadDefaultState } from './actions'
+import { connect } from 'react-redux'
+import { AppAction, setImage, loadDefaultState, setSidePanelVisibility } from './actions'
 import { GlobalSettings } from './types/global-settings'
 import { UIState } from './types/ui-state'
 import { ImageState } from './types/image-state'
 import { SolverResult } from './solver/solver-result'
 import { ipcRenderer, remote } from 'electron'
-import { NewProjectMessage, OpenProjectMessage, SaveProjectMessage, SaveProjectAsMessage, OpenImageMessage, ExportMessage, ExportType } from '../main/ipc-messages'
+import { NewProjectMessage, OpenProjectMessage, SaveProjectMessage, SaveProjectAsMessage, OpenImageMessage, ExportMessage, ExportType, SetSidePanelVisibilityMessage } from '../main/ipc-messages'
 import ProjectFile from './io/project-file'
 import { readFileSync } from 'fs'
 import { SpecifyProjectPathMessage, OpenDroppedProjectMessage, SpecifyExportPathMessage } from './ipc-messages'
 import { loadImage } from './io/util'
 import store from './store/store'
 import SplashScreen from './components/splash-screen'
+import { Dispatch } from 'redux'
 
 interface AppProps {
   uiState: UIState,
@@ -51,6 +52,7 @@ interface AppProps {
   onSaveProjectAsIPCMessage(filePath: string): void
   onOpenImageIPCMessage(imagePath: string): void
   onExportIPCMessage(exportType: ExportType): void
+  onSetSidePanelVisibilityIPCMessage(panelsAreVisible: boolean): void
 }
 
 class App extends React.PureComponent<AppProps> {
@@ -98,7 +100,7 @@ class App extends React.PureComponent<AppProps> {
   }
 
   render() {
-    const hasImage = this.props.image.data != null
+    const hasImage = this.props.image.data !== null
     return (
       <div id='app-container'>
         <SettingsContainer isVisible={this.props.uiState.sidePanelsAreVisible} />
@@ -138,6 +140,9 @@ class App extends React.PureComponent<AppProps> {
       this.props.onExportIPCMessage(message.exportType)
     })
 
+    ipcRenderer.on(SetSidePanelVisibilityMessage.type, (_: any, message: SetSidePanelVisibilityMessage) => {
+      this.props.onSetSidePanelVisibilityIPCMessage(message.panelsAreVisible)
+    })
   }
 }
 
@@ -222,6 +227,9 @@ export function mapDispatchToProps(dispatch: Dispatch<AppAction>) {
           new SpecifyExportPathMessage(exportType, dataToExport)
         )
       }
+    },
+    onSetSidePanelVisibilityIPCMessage: (panelsAreVisible: boolean) => {
+      dispatch(setSidePanelVisibility(panelsAreVisible))
     }
   }
 }

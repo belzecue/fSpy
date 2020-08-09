@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ import store from '../store/store'
 import { StoreState } from '../types/store-state'
 import SavedState from './saved-state'
 import { AppAction, loadState, setProjectFilePath } from '../actions'
-import { Dispatch } from 'react-redux'
+import { Dispatch } from 'redux'
 import { loadImage, resourcePath } from './util'
 import { remote } from 'electron'
 import { defaultResultDisplaySettings } from '../defaults/result-display-settings'

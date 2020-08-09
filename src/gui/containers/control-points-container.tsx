@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@ import * as React from 'react'
 import { ImageState } from '../types/image-state'
 import { StoreState } from '../types/store-state'
 import { ControlPointsState1VP, ControlPointsState2VP, ControlPointPairIndex, ControlPointsStateBase } from '../types/control-points-state'
-import { connect, Dispatch } from 'react-redux'
+import { connect } from 'react-redux'
 import { GlobalSettings } from '../types/global-settings'
 import ControlPointsPanel from '../components/control-points-panel/control-points-panel'
 import Point2D from '../solver/point-2d'
 import { AppAction, setPrincipalPoint, setOrigin, setReferenceDistanceAnchor, adjustHorizon, adjustReferenceDistanceHandle, adjustFirstVanishingPoint, adjustSecondVanishingPoint, adjustThirdVanishingPoint } from '../actions'
 import { CalibrationSettingsBase, CalibrationSettings1VP, CalibrationSettings2VP } from '../types/calibration-settings'
 import { SolverResult } from '../solver/solver-result'
+import { Dispatch } from 'redux'
 
 export interface ControlPointsContainerCallbacks {
   onPrincipalPointDrag(position: Point2D): void
@@ -66,6 +67,7 @@ interface ControlPointsContainerProps {
   controlPointsState1VP: ControlPointsState1VP
   controlPointsState2VP: ControlPointsState2VP
   solverResult: SolverResult
+  applyImagePadding: boolean
 }
 
 class ControlPointsContainer extends React.Component<ControlPointsContainerProps & ControlPointsContainerCallbacks> {
@@ -82,6 +84,7 @@ class ControlPointsContainer extends React.Component<ControlPointsContainerProps
         controlPointsState1VP={this.props.controlPointsState1VP}
         controlPointsState2VP={this.props.controlPointsState2VP}
         solverResult={this.props.solverResult}
+        applyImagePadding={this.props.applyImagePadding}
       />
     )
   }
@@ -97,7 +100,8 @@ export function mapStateToProps(state: StoreState) {
     controlPointsStateBase: state.controlPointsStateBase,
     controlPointsState1VP: state.controlPointsState1VP,
     controlPointsState2VP: state.controlPointsState2VP,
-    solverResult: state.solverResult
+    solverResult: state.solverResult,
+    applyImagePadding: state.uiState.sidePanelsAreVisible
   }
 }
 

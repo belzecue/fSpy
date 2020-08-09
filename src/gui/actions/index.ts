@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,7 +75,8 @@ export enum ActionTypes {
   SET_ORIENTATION_DISPLAY_FORMAT = 'SET_ORIENTATION_DISPLAY_FORMAT',
   SET_PRINCIPAL_POINT_DISPLAY_FORMAT = 'SET_PRINCIPAL_POINT_DISPLAY_FORMAT',
   SET_FOV_DISPLAY_FORMAT = 'SET_FOV_DISPLAY_FORMAT',
-  SET_DISPLAY_ABSOLUTE_FOCAL_LENGTH = 'SET_DISPLAY_ABSOLUTE_FOCAL_LENGTH'
+  SET_DISPLAY_ABSOLUTE_FOCAL_LENGTH = 'SET_DISPLAY_ABSOLUTE_FOCAL_LENGTH',
+  SET_SIDE_PANEL_VISIBILITY = 'SET_SIDE_PANEL_VISIBILITY'
 }
 
 export function recalculateCalibrationResult(): ThunkAction<void, StoreState, void, AppAction> {
@@ -568,6 +569,18 @@ export function SetDisplayAbsoluteFocalLength(displayAbsoluteFocalLength: boolea
   }
 }
 
+export interface SetSidePanelVisibility {
+  type: ActionTypes.SET_SIDE_PANEL_VISIBILITY,
+  panelsAreVisible: boolean
+}
+
+export function setSidePanelVisibility(panelsAreVisible: boolean): SetSidePanelVisibility {
+  return {
+    type: ActionTypes.SET_SIDE_PANEL_VISIBILITY,
+    panelsAreVisible: panelsAreVisible
+  }
+}
+
 // Define a type covering all actions
 export type AppAction =
   LoadState |
@@ -601,7 +614,8 @@ export type AppAction =
   SetOrientationDisplayFormat |
   SetFieldOfViewDisplayFormat |
   SetPrincipalPointDisplayFormat |
-  SetDisplayAbsoluteFocalLength
+  SetDisplayAbsoluteFocalLength |
+  SetSidePanelVisibility
 
 // A list of action types that trigger calibration result calculation
 export const actionTypesTriggeringRecalculation: ActionTypes[] = [

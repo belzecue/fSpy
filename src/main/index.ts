@@ -1,6 +1,6 @@
 /**
  * fSpy
- * Copyright (C) 2018 - Per Gantelius
+ * Copyright (c) 2020 - Per Gantelius
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  */
 
 import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
-import { OpenProjectMessage, OpenImageMessage, SaveProjectMessage, SaveProjectAsMessage, NewProjectMessage, ExportMessage, ExportType } from './ipc-messages'
+import { OpenProjectMessage, OpenImageMessage, SaveProjectMessage, SaveProjectAsMessage, NewProjectMessage, ExportMessage, ExportType, SetSidePanelVisibilityMessage } from './ipc-messages'
 const path = require('path')
 const url = require('url')
 
@@ -29,6 +29,8 @@ import ProjectFile from '../gui/io/project-file'
 import { Palette } from '../gui/style/palette'
 import { openSync, writeSync, closeSync } from 'fs'
 import { CLI } from '../cli/cli'
+
+app.allowRendererProcessReuse = true
 
 let mainWindow: Electron.BrowserWindow | null = null
 
@@ -101,7 +103,8 @@ function createWindow() {
     backgroundColor: Palette.imagePanelBackgroundColor,
     webPreferences: {
       // Allow loading local files in dev mode
-      webSecurity: process.env.DEV === undefined
+      webSecurity: process.env.DEV === undefined,
+      nodeIntegration: true
     }
   })
 
@@ -135,13 +138,14 @@ function createWindow() {
                     { name: 'fSpy project files', extensions: ['fspy'] }
                   ],
                   properties: ['openFile']
-                },
-                (filePaths: string[]) => {
-                  if (filePaths !== undefined) {
-                    openProject(filePaths[0], window)
-                  }
                 }
-              )
+              ).then((result) => {
+                if (!result.canceled) {
+                  openProject(result.filePaths[0], window)
+                }
+              }).catch((_) => {
+                //
+              })
             } else {
               dialog.showOpenDialog(
                 {
@@ -149,14 +153,15 @@ function createWindow() {
                     { name: 'fSpy project files', extensions: ['fspy'] }
                   ],
                   properties: ['openFile']
-                },
-                (filePaths: string[]) => {
-                  if (filePaths !== undefined) {
-                    initialOpenMessage = new OpenProjectMessage(filePaths[0], false)
-                    createWindow()
-                  }
                 }
-              )
+              ).then((result) => {
+                if (!result.canceled) {
+                  initialOpenMessage = new OpenProjectMessage(result.filePaths[0], false)
+                  createWindow()
+                }
+              }).catch((_) => {
+                //
+              })
             }
           }
         })
@@ -170,32 +175,34 @@ function createWindow() {
       onSaveProjectAs: () => {
         dialog.showSaveDialog(
           window,
-          {},
-          (filePath: string) => {
-            if (filePath !== undefined) {
-              window.webContents.send(
-                SaveProjectAsMessage.type,
-                new SaveProjectAsMessage(filePath)
-              )
-            }
+          {}
+        ).then((result) => {
+          if (!result.canceled && result.filePath !== undefined) {
+            window.webContents.send(
+              SaveProjectAsMessage.type,
+              new SaveProjectAsMessage(result.filePath)
+            )
           }
-        )
+        }).catch((_) => {
+          //
+        })
       },
       onOpenImage: () => {
         dialog.showOpenDialog(
           window,
           {
             properties: ['openFile']
-          },
-          (filePaths: string[]) => {
-            if (filePaths !== undefined) {
-              window.webContents.send(
-                OpenImageMessage.type,
-                new OpenImageMessage(filePaths[0])
-              )
-            }
           }
-        )
+        ).then((result) => {
+          if (!result.canceled) {
+            window.webContents.send(
+              OpenImageMessage.type,
+              new OpenImageMessage(result.filePaths[0])
+            )
+          }
+        }).catch((_) => {
+          //
+        })
       },
       onOpenExampleProject: () => {
         showDiscardChangesDialogIfNeeded(mainWindow, (didCancel: boolean) => {
@@ -227,17 +234,23 @@ function createWindow() {
       },
       onQuit: () => {
         app.quit()
+      },
+      onEnterFullScreenMode: () => {
+        window.webContents.send(
+          SetSidePanelVisibilityMessage.type,
+          new SetSidePanelVisibilityMessage(false)
+        )
+        window.setFullScreen(true)
+      },
+      onExitFullScreenMode: () => {
+        window.webContents.send(
+          SetSidePanelVisibilityMessage.type,
+          new SetSidePanelVisibilityMessage(true)
+        )
+        window.setFullScreen(false)
       }
     }
   )
-
-  // Prevent (macos) zooming
-  let webContents = window.webContents
-  webContents.on('did-finish-load', () => {
-    webContents.setZoomFactor(1)
-    webContents.setVisualZoomLevelLimits(1, 1)
-    webContents.setLayoutZoomLevelLimits(0, 0)
-  })
 
   // Prevent following links, e.g when they are dropped
   // on the app window
@@ -267,6 +280,39 @@ function createWindow() {
         OpenProjectMessage.type,
         new OpenProjectMessage(initialOpenMessage.filePath, false)
       )
+    } else {
+      // Check if an image or project path was passed as an argument
+      const argCount = process.argv.length
+      const openCommand = process.argv[argCount - 2]
+      const filePath = process.argv[argCount - 1]
+      if (openCommand == 'open' && filePath) {
+        try {
+          // Make sure the file can be opened before proceeding
+          const fd = openSync(filePath, 'r')
+          closeSync(fd)
+
+          if (ProjectFile.isProjectFile(filePath)) {
+            window.webContents.send(
+              OpenProjectMessage.type,
+              new OpenProjectMessage(filePath, false)
+            )
+          } else {
+            window.webContents.send(
+              OpenImageMessage.type,
+              new OpenImageMessage(filePath)
+            )
+          }
+        } catch (error) {
+          console.log(error)
+          console.log('process.argv:')
+          console.log(process.argv)
+
+          const errorMessage = 'Failed to open \'' + filePath + '\'. ' + error
+          dialog.showMessageBoxSync(window, {
+            message: errorMessage
+          })
+        }
+      }
     }
 
     if (process.env.DEV) {
@@ -283,9 +329,16 @@ function createWindow() {
 
   const devUrl = 'http://localhost:8080'
 
-  window.loadURL(process.env.DEV ? devUrl : startUrl)
+  window.loadURL(
+    process.env.DEV ? devUrl : startUrl
+  ).then((_) => {
+    //
+  }).catch((_) => {
+    //
+  })
 
   Menu.setApplicationMenu(appMenuManager.menu)
+  appMenuManager.setExitFullScreenItemEnabled(false)
 
   window.on('close', (event: Event) => {
     showDiscardChangesDialogIfNeeded(window, (didCancel: boolean) => {
@@ -299,6 +352,8 @@ function createWindow() {
         appMenuManager.setOpenImageItemEnabled(false)
         appMenuManager.setSaveAsItemEnabled(false)
         appMenuManager.setSaveItemEnabled(false)
+        appMenuManager.setEnterFullScreenItemEnabled(false)
+        appMenuManager.setExitFullScreenItemEnabled(false)
         mainWindow = null
         documentState = null
         initialOpenMessage = null
@@ -306,35 +361,53 @@ function createWindow() {
     })
   })
 
+  window.on('enter-full-screen', (_: Event) => {
+    appMenuManager.setEnterFullScreenItemEnabled(false)
+    appMenuManager.setExitFullScreenItemEnabled(true)
+    window.setMenuBarVisibility(false)
+  })
+
+  window.on('leave-full-screen', (_: Event) => {
+    window.webContents.send(
+      SetSidePanelVisibilityMessage.type,
+      new SetSidePanelVisibilityMessage(true)
+    )
+    appMenuManager.setEnterFullScreenItemEnabled(true)
+    appMenuManager.setExitFullScreenItemEnabled(false)
+    window.setMenuBarVisibility(true)
+  })
+
   ipcMain.on(SpecifyProjectPathMessage.type, (_: any, __: SpecifyProjectPathMessage) => {
     // TODO: DRY
     dialog.showSaveDialog(
       window,
-      {},
-      (filePath: string) => {
-        if (filePath !== undefined) {
-          window.webContents.send(
-            SaveProjectAsMessage.type,
-            new SaveProjectAsMessage(filePath)
-          )
-        }
+      {}
+    ).then((result) => {
+      if (!result.canceled && result.filePath) {
+        window.webContents.send(
+          SaveProjectAsMessage.type,
+          new SaveProjectAsMessage(result.filePath)
+        )
       }
-    )
+    }).catch((_) => {
+      //
+    })
   })
 
   ipcMain.on(SpecifyExportPathMessage.type, (_: any, message: SpecifyExportPathMessage) => {
     // TODO: DRY
     dialog.showSaveDialog(
       window,
-      {},
-      (filePath: string) => {
-        if (filePath !== undefined) {
-          let file = openSync(filePath, 'w')
-          writeSync(file, message.data)
-          closeSync(file)
-        }
+      {}
+    ).then((result) => {
+      if (!result.canceled && result.filePath) {
+        let file = openSync(result.filePath, 'w')
+        writeSync(file, message.data)
+        closeSync(file)
       }
-    )
+    }).catch((_) => {
+      //
+    })
   })
 
   ipcMain.on(OpenDroppedProjectMessage.type, (_: any, message: OpenDroppedProjectMessage) => {
@@ -412,11 +485,11 @@ function showDiscardChangesDialogIfNeeded(
   }
 
   if (documentState.hasUnsavedChanges) {
-    let result = dialog.showMessageBox(
+    let result = dialog.showMessageBoxSync(
       window!,
       {
         type: 'question',
-        buttons: ['Yes', 'No'],
+        buttons: ['Discard', 'Cancel'],
         title: 'Proceed?',
         message: 'Do you want to discard unsaved changes?'
       }
